@@ -19,6 +19,7 @@ export function WidgetEmbed() {
     s.src = WIDGET_SRC;
     s.async = true;
     s.dataset.foyerBusinessId = BUSINESS_ID;
+    s.dataset.foyerBusinessName = "Anchor Plumbing";
     s.dataset.foyerPosition = "bottom-right";
     s.dataset.foyerTheme = "auto";
     document.body.appendChild(s);

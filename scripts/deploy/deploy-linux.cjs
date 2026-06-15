@@ -111,7 +111,7 @@ const CONFIG = {
     },
     paths: {
         // Support both SERVER_BASE_PATH and SERVER_DEST_PATH (.env.deployment uses DEST_PATH)
-        basePath: (process.env.SERVER_BASE_PATH || process.env.SERVER_DEST_PATH || '/var/www/webhook-relay').trim(),
+        basePath: (process.env.SERVER_BASE_PATH || process.env.SERVER_DEST_PATH || '/var/www/foyer').trim(),
         releasesDir: 'releases',
         sharedDir: 'shared',
         currentLink: 'current',
@@ -126,12 +126,14 @@ const FILES_TO_STAGE = [
     'config',
     'database',
     'docs',
+    'infra',
     'public',
     'resources',
     'routes',
     'scripts',
     'storage/app',
     'storage/framework',
+    'workers',
     'artisan',
     'composer.json',
     'composer.lock',
@@ -149,12 +151,14 @@ const FILES_TO_TRANSFER = [
     'config',
     'database',
     'docs',
+    'infra',
     'public',
     'resources',
     'routes',
     'scripts',
     'storage/app',
     'storage/framework',
+    'workers',
     'vendor',
     'artisan',
     'composer.json',
@@ -772,12 +776,8 @@ async function deploy(options = {}) {
         log('✅', 'Apache reloaded');
 
         log('♻️', ' Restarting queue workers...');
-        await execSSH(ssh, 'sudo supervisorctl restart webhook-relay-horizon:*', { ignoreError: true });
-        log('✅', 'Queue workers restarted');
-
-        log('♻️', ' Restarting Reverb WebSocket server...');
-        await execSSH(ssh, 'sudo supervisorctl restart webhook-relay-reverb', { ignoreError: true });
-        log('✅', 'Reverb restarted');
+        await execSSH(ssh, 'sudo supervisorctl restart foyer-horizon:* 2>/dev/null || true; sudo systemctl reload php8.3-fpm', { ignoreError: true });
+        log('✅', 'Queue workers + php-fpm reloaded');
 
         // ==== CREATE SENTRY RELEASE ====
         createSentryRelease(releaseName);
@@ -786,7 +786,7 @@ async function deploy(options = {}) {
         if (!options.skipVerify) {
             log('🏥', 'Running post-deploy health check...');
             let healthOk = false;
-            const healthUrl = `https://${process.env.MARKETING_DOMAIN || 'api.webhook-relay.dcsuniverse.com'}/health`;
+            const healthUrl = `https://${process.env.MARKETING_DOMAIN || 'api.foyer.philiprehberger.com'}/health`;
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                     const result = await execSSH(ssh, `curl -sf --max-time 30 ${healthUrl}`, { ignoreError: true });
@@ -827,7 +827,7 @@ async function deploy(options = {}) {
         const elapsed = formatElapsedTime(Date.now() - startTime);
         log('🎉', `Deployment successful! Release: ${releaseName}`);
         log('⏱️', ` Total time: ${elapsed}`);
-        log('🌐', 'Site: https://api.webhook-relay.dcsuniverse.com');
+        log('🌐', 'Site: https://api.foyer.philiprehberger.com');
 
     } catch (error) {
         const elapsed = formatElapsedTime(Date.now() - startTime);

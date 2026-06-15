@@ -9,116 +9,96 @@
  *     data-foyer-theme="auto">
  *   </script>
  *
- * Phase 1 ships the boot + Shadow DOM + open/close + a stubbed session
- * mint. Phase 6 lands the full chat UI, OTP cross-channel resume, and the
- * embeddable build pipeline integration tests.
+ * Required: data-foyer-business-id (the business's ULID).
+ * Optional: data-foyer-api-base, data-foyer-position, data-foyer-theme,
+ *           data-foyer-business-name (display label).
  */
-import { h, render } from 'preact';
-import { useState } from 'preact/hooks';
-
-interface Config {
-    apiBase: string;
-    businessId: string;
-    position: 'bottom-right' | 'bottom-left';
-    theme: 'auto' | 'light' | 'dark';
-}
+import { h, render } from "preact";
+import { useState } from "preact/hooks";
+import { ChatPanel } from "./ChatPanel";
+import { resolveTheme, shadowStyles } from "./tokens";
+import type { Config } from "./types";
 
 function readConfig(script: HTMLScriptElement): Config {
-    return {
-        apiBase: script.dataset.foyerApiBase ?? 'https://api.foyer.philiprehberger.com',
-        businessId: script.dataset.foyerBusinessId ?? '',
-        position: (script.dataset.foyerPosition as Config['position']) ?? 'bottom-right',
-        theme: (script.dataset.foyerTheme as Config['theme']) ?? 'auto',
-    };
+  return {
+    apiBase:
+      script.dataset.foyerApiBase ?? "https://api.foyer.philiprehberger.com",
+    businessId: script.dataset.foyerBusinessId ?? "",
+    position:
+      (script.dataset.foyerPosition as Config["position"]) ?? "bottom-right",
+    theme: (script.dataset.foyerTheme as Config["theme"]) ?? "auto",
+  };
 }
 
-const TOKENS = `
-    :host { all: initial; }
-    .panel {
-        position: fixed; bottom: 20px; z-index: 2147483000;
-        width: 360px; max-width: calc(100vw - 40px);
-        background: #fff; border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
-        color: #1c1817;
-        overflow: hidden;
-    }
-    .panel.right { right: 20px; }
-    .panel.left  { left: 20px; }
-    .header {
-        background: #b45309; color: white;
-        padding: 12px 16px; font-weight: 600;
-        display: flex; justify-content: space-between; align-items: center;
-        cursor: pointer;
-    }
-    .body { padding: 16px; min-height: 280px; }
-    .close { background: none; border: 0; color: white; cursor: pointer; font-size: 18px; }
-    .empty { color: #57534e; font-size: 14px; line-height: 1.4; }
-    .composer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #e7e5e4; }
-    .composer input { flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid #d6d3d1; font-size: 14px; }
-    .composer button { padding: 8px 14px; border-radius: 6px; background: #b45309; color: white; border: 0; cursor: pointer; }
-`;
+function Widget({
+  config,
+  businessName,
+}: {
+  config: Config;
+  businessName: string;
+}) {
+  const [open, setOpen] = useState(false);
 
-function Widget({ config }: { config: Config }) {
-    const [open, setOpen] = useState(false);
-    const [text, setText] = useState('');
-
+  if (open) {
     return (
-        <div class={`panel ${config.position === 'bottom-left' ? 'left' : 'right'}`}>
-            <div class="header" onClick={() => setOpen(!open)}>
-                <span>Foyer — text us</span>
-                <button class="close" type="button">{open ? '–' : '+'}</button>
-            </div>
-            {open && (
-                <>
-                    <div class="body">
-                        <p class="empty">
-                            Tell us what you need help with — service type, address, when works.
-                        </p>
-                    </div>
-                    <div class="composer">
-                        <input
-                            placeholder="Type a message…"
-                            value={text}
-                            onInput={(e) => setText((e.target as HTMLInputElement).value)}
-                        />
-                        <button type="button" onClick={() => setText('')}>Send</button>
-                    </div>
-                </>
-            )}
-        </div>
+      <ChatPanel
+        config={config}
+        businessName={businessName}
+        onClose={() => setOpen(false)}
+      />
     );
+  }
+
+  return (
+    <button
+      type="button"
+      class={`launcher ${config.position === "bottom-left" ? "left" : "right"}`}
+      onClick={() => setOpen(true)}
+      aria-label="Open booking chat"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+      </svg>
+    </button>
+  );
 }
 
 function mount() {
-    const script = document.currentScript as HTMLScriptElement | null;
-    if (!script) {
-        return;
-    }
-    const config = readConfig(script);
-    if (!config.businessId) {
-        console.warn('[foyer-widget] data-foyer-business-id is required');
+  const script =
+    (document.currentScript as HTMLScriptElement | null) ??
+    (document.querySelector(
+      "script[data-foyer-business-id]",
+    ) as HTMLScriptElement | null);
+  if (!script) return;
 
-        return;
-    }
+  const config = readConfig(script);
+  if (!config.businessId) {
+    console.warn("[foyer-widget] data-foyer-business-id is required");
+    return;
+  }
 
-    const host = document.createElement('div');
-    host.id = 'foyer-widget-host';
-    document.body.appendChild(host);
+  const businessName =
+    script.dataset.foyerBusinessName ?? "this business";
 
-    const shadow = host.attachShadow({ mode: 'open' });
-    const style = document.createElement('style');
-    style.textContent = TOKENS;
-    shadow.appendChild(style);
+  if (document.getElementById("foyer-widget-host")) return;
 
-    const mountPoint = document.createElement('div');
-    shadow.appendChild(mountPoint);
+  const host = document.createElement("div");
+  host.id = "foyer-widget-host";
+  document.body.appendChild(host);
 
-    render(<Widget config={config} />, mountPoint);
+  const shadow = host.attachShadow({ mode: "open" });
+  const style = document.createElement("style");
+  style.textContent = shadowStyles(resolveTheme(config.theme));
+  shadow.appendChild(style);
+
+  const mountPoint = document.createElement("div");
+  shadow.appendChild(mountPoint);
+
+  render(<Widget config={config} businessName={businessName} />, mountPoint);
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", mount);
 } else {
-    mount();
+  mount();
 }

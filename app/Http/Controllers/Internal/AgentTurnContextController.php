@@ -6,15 +6,16 @@ use App\Models\Business;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 /**
  * GET /_internal/conversations/{conversation}/turn-context
  *
  * The FastAPI agent worker calls this to load the state it needs to drive
- * the next turn — last N messages, current phase, business config, persona,
- * scope guardrails, today's spend ceiling progress.
- *
- * Auth: BindToLoopback + InternalHmac middleware (see routes/api.php).
+ * the next turn. The response shape must match the worker's TurnContext
+ * Pydantic model in `workers/agent/contracts.py`. Field names are flat at
+ * the top level by design — the worker treats this as a single source of
+ * truth and does not chain extra HTTP round trips for sub-data.
  */
 class AgentTurnContextController
 {
@@ -30,61 +31,74 @@ class AgentTurnContextController
             ->limit(self::TURN_WINDOW_MESSAGES)
             ->get()
             ->reverse()
-            ->values()
-            ->map(fn (Message $m) => [
-                'id' => $m->id,
-                'role' => $m->role,
-                'text' => $m->text,
-                'phase' => $m->phase,
-                'attachments' => $m->attachments,
-                'created_at' => $m->created_at?->toIso8601String(),
-            ])->all();
+            ->values();
 
-        $cost = \DB::table('llm_cost_daily')
+        $messages = $recent->map(fn (Message $m) => [
+            'role' => $m->role,
+            'text' => (string) ($m->text ?? ''),
+            'phase' => $m->phase,
+        ])->all();
+
+        $lastUserMessage = $recent->last(fn (Message $m) => $m->role === Message::ROLE_CUSTOMER);
+        $costToday = (int) (DB::table('llm_cost_daily')
             ->where('business_id', $business->id)
             ->whereDate('date', now()->toDateString())
-            ->first();
+            ->value('cost_micros') ?? 0);
 
         return response()->json([
-            'conversation' => [
-                'id' => $conversation->id,
-                'channel' => $conversation->channel,
-                'current_phase' => $conversation->currentPhase(),
-                'state' => $conversation->state,
-                'phone_verified_at' => $conversation->phone_verified_at?->toIso8601String(),
-            ],
+            'conversation_id' => $conversation->id,
             'business' => [
                 'id' => $business->id,
                 'name' => $business->name,
-                'persona' => $business->persona,
-                'system_prompt_suffix' => $business->system_prompt_suffix,
                 'timezone' => $business->timezone,
-                'service_area' => $business->service_area,
-                'business_hours' => $business->business_hours,
-                'blocked_dates' => $business->blocked_dates,
-                'min_lead_minutes' => $business->min_lead_minutes,
-                'max_lead_days' => $business->max_lead_days,
-                'human_handoff_threshold' => $business->human_handoff_threshold,
-                'cost_ceiling_micros' => $business->cost_ceiling_micros,
-                'service_types' => $business->serviceTypes->map(fn ($t) => [
-                    'key' => $t->key,
-                    'label' => $t->label,
-                    'description' => $t->description,
-                    'est_duration_min' => $t->est_duration_min,
-                    'requires_photos' => $t->requires_photos,
-                ])->all(),
-                'kill_switch_active' => $business->isKilled(),
+                'persona' => $business->persona ?: 'professional',
+                'system_prompt_suffix' => (string) ($business->system_prompt_suffix ?? ''),
+                'service_types' => $business->serviceTypes->pluck('key')->all(),
+                'service_area_description' => $this->describeServiceArea($business),
+                'business_hours_description' => $this->describeBusinessHours($business),
+                'human_handoff_threshold' => (float) $business->human_handoff_threshold,
+                'cost_ceiling_micros' => (int) $business->cost_ceiling_micros,
+                'cheap_mode_model' => 'claude-haiku-4-5',
             ],
-            'cost_today' => [
-                'tokens_in' => (int) ($cost->tokens_in ?? 0),
-                'tokens_out' => (int) ($cost->tokens_out ?? 0),
-                'cost_micros' => (int) ($cost->cost_micros ?? 0),
-                'remaining_micros' => max(
-                    0,
-                    $business->cost_ceiling_micros - (int) ($cost->cost_micros ?? 0),
-                ),
-            ],
-            'recent_messages' => $recent,
+            'current_phase' => $conversation->currentPhase() ?: 'greet',
+            'messages' => $messages,
+            'last_user_message' => (string) ($lastUserMessage?->text ?? ''),
+            'cumulative_cost_micros_today' => $costToday,
         ]);
+    }
+
+    private function describeServiceArea(Business $business): string
+    {
+        $area = $business->service_area ?? [];
+        $type = $area['type'] ?? null;
+
+        if ($type === 'zip_codes') {
+            $codes = $area['codes'] ?? [];
+
+            return $codes ? 'ZIP codes: '.implode(', ', $codes) : '';
+        }
+        if ($type === 'radius') {
+            return sprintf(
+                'within %s km of (%s, %s)',
+                $area['radius_km'] ?? '?',
+                $area['center_lat'] ?? '?',
+                $area['center_lng'] ?? '?',
+            );
+        }
+
+        return '';
+    }
+
+    private function describeBusinessHours(Business $business): string
+    {
+        $hours = $business->business_hours ?? [];
+        $lines = [];
+        foreach (['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as $day) {
+            foreach ($hours[$day] ?? [] as $window) {
+                $lines[] = sprintf('%s %s-%s', ucfirst($day), $window['open'] ?? '?', $window['close'] ?? '?');
+            }
+        }
+
+        return implode('; ', $lines);
     }
 }

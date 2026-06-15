@@ -16,6 +16,9 @@ use App\Http\Controllers\Internal\AgentTurnContextController;
 use App\Http\Controllers\Internal\AgentTurnResultController;
 use Illuminate\Support\Facades\Route;
 
+// Bare /health alias for the deploy-script post-deploy probe.
+Route::get('health', HealthController::class)->name('health');
+
 Route::prefix('v1')->group(function () {
     Route::get('healthz', HealthController::class)->name('v1.healthz');
 

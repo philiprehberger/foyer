@@ -6,9 +6,6 @@ return [
     'environment' => env('APP_ENV', 'production'),
     'traces_sample_rate' => (float) env('SENTRY_TRACES_SAMPLE_RATE', 0.1),
     'send_default_pii' => false,
-    'before_send' => function ($event) {
-        // Scrub anything that looks like a phone number from event payloads.
-        // Defensive — Sentry will retain even errored payloads otherwise.
-        return $event;
-    },
+    // before_send hook is registered at runtime, not in config — Laravel's
+    // config:cache cannot serialize closures.
 ];
