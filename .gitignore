@@ -43,3 +43,18 @@ Thumbs.db
 /sdks/python/.pytest_cache/
 
 /web/.deploy-staging/
+
+# Python agent worker — virtualenv, build artifacts, caches
+/workers/agent/.venv/
+/workers/agent/__pycache__/
+/workers/agent/**/__pycache__/
+/workers/agent/.pytest_cache/
+/workers/agent/.mypy_cache/
+/workers/agent/*.egg-info/
+/workers/agent/dist/
+/workers/agent/build/
+
+# Widget build output
+/widget/dist/
+/widget/node_modules/
+
