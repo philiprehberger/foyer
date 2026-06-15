@@ -1,0 +1,30 @@
+{
+  "slug": "anchor-plumbing",
+  "name": "Anchor Plumbing",
+  "timezone": "America/Denver",
+  "quiet_hours_start": "21:00",
+  "quiet_hours_end": "08:00",
+  "persona": "professional",
+  "system_prompt_suffix": null,
+  "service_area": {
+    "type": "zip_codes",
+    "codes": ["80301", "80302", "80303", "80304", "80305", "80306", "80307", "80308", "80309", "80310"]
+  },
+  "business_hours": {
+    "mon": [{"open": "08:00", "close": "17:00"}],
+    "tue": [{"open": "08:00", "close": "17:00"}],
+    "wed": [{"open": "08:00", "close": "17:00"}],
+    "thu": [{"open": "08:00", "close": "17:00"}],
+    "fri": [{"open": "08:00", "close": "17:00"}]
+  },
+  "blocked_dates": [],
+  "min_lead_minutes": 60,
+  "max_lead_days": 30,
+  "human_handoff_threshold": 0.6,
+  "cost_ceiling_micros": 500000,
+  "service_types": [
+    {"key": "drain-clear", "label": "Drain clearing", "est_duration_min": 60, "requires_photos": false},
+    {"key": "leak-repair", "label": "Leak repair", "est_duration_min": 90, "requires_photos": true},
+    {"key": "water-heater", "label": "Water heater install", "est_duration_min": 180, "requires_photos": true}
+  ]
+}

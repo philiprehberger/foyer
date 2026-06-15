@@ -1,0 +1,56 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.22.0",
+    "generators": {
+      "typescript": {
+        "generatorName": "typescript-fetch",
+        "inputSpec": "openapi/spec.yaml",
+        "output": "sdks/typescript/generated",
+        "additionalProperties": {
+          "npmName": "@philiprehberger/webhook-relay-client",
+          "npmVersion": "0.3.0",
+          "supportsES6": true,
+          "modelPropertyNaming": "camelCase",
+          "typescriptThreePlus": true,
+          "withInterfaces": true
+        }
+      },
+      "php": {
+        "generatorName": "php",
+        "inputSpec": "openapi/spec.yaml",
+        "output": "sdks/php/generated",
+        "additionalProperties": {
+          "invokerPackage": "WebhookRelay\\Client",
+          "packageName": "WebhookRelayClient",
+          "composerPackageName": "philiprehberger/webhook-relay-client",
+          "artifactVersion": "0.3.0",
+          "srcBasePath": "src"
+        }
+      },
+      "python": {
+        "generatorName": "python",
+        "inputSpec": "openapi/spec.yaml",
+        "output": "sdks/python/generated",
+        "additionalProperties": {
+          "packageName": "webhook_relay_client",
+          "projectName": "webhook-relay-client",
+          "packageVersion": "0.3.0",
+          "library": "urllib3"
+        }
+      },
+      "go": {
+        "generatorName": "go",
+        "inputSpec": "openapi/spec.yaml",
+        "output": "sdks/go/generated",
+        "additionalProperties": {
+          "packageName": "webhookrelay",
+          "packageVersion": "0.3.0",
+          "isGoSubmodule": true,
+          "generateInterfaces": true
+        }
+      }
+    }
+  }
+}

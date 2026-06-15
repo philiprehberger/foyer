@@ -1,0 +1,10 @@
+# Foyer crontab. Install on the EC2 host with:
+#   sudo crontab -u ubuntu /var/www/foyer/current/infra/cron/foyer-crontab
+#
+# Laravel's `schedule:run` is the single entry; everything else is dispatched
+# by routes/console.php (ExpireStaleSlotHolds every minute, calendar fallback
+# poll every 5 minutes, demo reset hourly).
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+* * * * * cd /var/www/foyer/current && php artisan schedule:run >> /var/log/foyer/schedule.log 2>&1

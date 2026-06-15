@@ -1,0 +1,492 @@
+openapi: 3.1.0
+info:
+  title: Foyer
+  version: "1.0.0"
+  summary: Conversational booking agent for local-service businesses.
+  description: |
+    SMS plus embedded web chat. Fifteen-minute slot hold against a Postgres
+    exclusion constraint. Human-confirm gate before any calendar lock.
+
+    This document is the public-surface contract — the loopback-bound
+    internal API used between Laravel and the FastAPI agent worker is
+    documented separately in `docs/architecture/internal-api.md` and is not
+    exposed here.
+
+    Errors are RFC 7807 problem documents
+    (`application/problem+json`).
+  contact:
+    name: Philip Rehberger
+    url: https://philiprehberger.com
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://api.foyer.philiprehberger.com
+    description: Production
+tags:
+  - name: webhooks
+    description: Inbound from Twilio and Google. Signed; fail-closed.
+  - name: web
+    description: Per-session-token endpoints used by the embedded widget.
+  - name: conversations
+    description: Owner-authenticated. Read-only.
+  - name: bookings
+    description: Owner-authenticated. Confirm and reject are idempotent.
+  - name: businesses
+    description: Owner-authenticated. Scope and kill switch.
+  - name: numbers
+    description: Owner-authenticated. Async Twilio number provisioning.
+  - name: health
+    description: Liveness probe for monitoring.
+security:
+  - sanctumBearer: []
+paths:
+  /v1/healthz:
+    get:
+      operationId: getHealth
+      summary: Liveness probe
+      tags: [health]
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthy: { type: boolean }
+                  db: { type: string }
+                  redis: { type: string }
+                  agent_worker: { type: string }
+
+  /v1/sms/inbound:
+    post:
+      operationId: smsInbound
+      summary: Inbound SMS webhook (Twilio)
+      tags: [webhooks]
+      description: |
+        Twilio-signed. X-Twilio-Signature validated; fail-closed.
+        Queue-fast-ack: idempotent on MessageSid; returns 200 within 500ms;
+        agent dispatch happens out-of-band.
+      security: []
+      parameters:
+        - in: header
+          name: X-Twilio-Signature
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: {}
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/xml:
+              schema: {}
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/twilio/status:
+    post:
+      operationId: twilioStatusCallback
+      summary: Twilio delivery status callback
+      tags: [webhooks]
+      security: []
+      parameters:
+        - in: header
+          name: X-Twilio-Signature
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: {}
+      responses:
+        "200":
+          description: Recorded
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/google/calendar-push:
+    post:
+      operationId: googleCalendarPush
+      summary: Google Calendar push notification receiver
+      tags: [webhooks]
+      security: []
+      parameters:
+        - in: header
+          name: X-Goog-Channel-Id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Goog-Resource-State
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Reconciliation enqueued
+
+  /v1/web/sessions:
+    post:
+      operationId: createWebSession
+      summary: Mint a widget session token
+      tags: [web]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_id]
+              properties:
+                business_id: { type: string, pattern: "^[0-9A-HJKMNP-TV-Z]{26}$" }
+      responses:
+        "201":
+          description: Session token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id: { type: string }
+                  token: { type: string }
+                  expires_at: { type: string, format: date-time }
+
+  /v1/web/sessions/{session}/verify-phone:
+    post:
+      operationId: verifyWebSessionPhone
+      summary: Issue or verify OTP for cross-channel resume
+      tags: [web]
+      security: []
+      parameters:
+        - in: path
+          name: session
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_e164: { type: string, pattern: "^\\+[1-9][0-9]{6,14}$" }
+                code: { type: string, pattern: "^[0-9]{6}$" }
+      responses:
+        "200":
+          description: Verified or code re-issued
+        "403":
+          $ref: "#/components/responses/ConsentBlocked"
+
+  /v1/web/inbound:
+    post:
+      operationId: webInbound
+      summary: Inbound web widget message
+      tags: [webhooks, web]
+      security: []
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Bearer <session token>
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [widget_message_id, text]
+              properties:
+                widget_message_id:
+                  type: string
+                  description: UUIDv7 generated client-side; idempotency key.
+                text: { type: string }
+                attachments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      content_type: { type: string }
+                      url: { type: string, format: uri }
+      responses:
+        "200":
+          description: Acknowledged
+
+  /v1/conversations:
+    get:
+      operationId: listConversations
+      summary: List conversations
+      tags: [conversations]
+      parameters:
+        - in: query
+          name: business_id
+          schema: { type: string }
+        - in: query
+          name: phase
+          schema: { type: string }
+        - in: query
+          name: customer_phone
+          schema: { type: string }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paged conversations
+
+  /v1/conversations/{conversation}:
+    get:
+      operationId: getConversation
+      summary: Conversation transcript with intents and token cost
+      tags: [conversations]
+      parameters:
+        - in: path
+          name: conversation
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Transcript
+
+  /v1/bookings:
+    get:
+      operationId: listBookings
+      summary: List bookings
+      tags: [bookings]
+      parameters:
+        - in: query
+          name: business_id
+          schema: { type: string }
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, canceled, completed]
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paged bookings
+
+  /v1/bookings/{booking}:
+    get:
+      operationId: getBooking
+      summary: Booking detail with transcript pointer
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Booking detail
+
+  /v1/bookings/{booking}/confirm:
+    post:
+      operationId: confirmBooking
+      summary: Confirm a pending booking
+      tags: [bookings]
+      description: |
+        Idempotent. Locks the slot in Google Calendar, queues a customer
+        confirmation SMS (quiet-hours-respecting), and transitions the
+        conversation to `completed`.
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Confirmed
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/bookings/{booking}/reject:
+    post:
+      operationId: rejectBooking
+      summary: Reject a pending booking
+      tags: [bookings]
+      description: |
+        Idempotent. Releases the slot hold and re-engages the agent to
+        propose alternatives. Quiet-hours-respecting on the outbound.
+      parameters:
+        - in: path
+          name: booking
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+                alternative_slots:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      start: { type: string, format: date-time }
+                      end: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Rejected
+
+  /v1/businesses/{business}/scope:
+    patch:
+      operationId: updateBusinessScope
+      summary: Update scope config
+      tags: [businesses]
+      parameters:
+        - in: path
+          name: business
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {}
+      responses:
+        "200":
+          description: Updated
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /v1/businesses/{business}/kill-switch:
+    post:
+      operationId: toggleKillSwitch
+      summary: Toggle per-tenant kill switch
+      tags: [businesses]
+      parameters:
+        - in: path
+          name: business
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: Toggled
+
+  /v1/out-of-scope-log:
+    get:
+      operationId: listOutOfScopeLog
+      summary: Out-of-scope conversation events
+      tags: [conversations]
+      parameters:
+        - in: query
+          name: business_id
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paged events
+
+  /v1/numbers/provision:
+    post:
+      operationId: provisionNumber
+      summary: Provision a Twilio number (async)
+      tags: [numbers]
+      description: |
+        Returns 202 with a Location header pointing to the job. Poll the job
+        endpoint for status.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_id, country, area_code]
+              properties:
+                business_id: { type: string }
+                country: { type: string, default: "US" }
+                area_code: { type: string }
+      responses:
+        "202":
+          description: Accepted
+          headers:
+            Location:
+              schema: { type: string }
+              description: URL of the job-status endpoint.
+
+  /v1/jobs/{job}:
+    get:
+      operationId: getJobStatus
+      summary: Async job status
+      tags: [numbers]
+      parameters:
+        - in: path
+          name: job
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job status
+
+components:
+  securitySchemes:
+    sanctumBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  responses:
+    Forbidden:
+      description: Signature mismatch or loopback policy violation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ConsentBlocked:
+      description: Customer is STOP'd on this number; outbound suppressed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: Slot no longer available, or state already advanced.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unprocessable:
+      description: Scope config validation failed; per-field errors in body.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        errors:
+          type: object
+          additionalProperties: true

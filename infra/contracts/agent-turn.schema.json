@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://foyer.philiprehberger.com/contracts/agent-turn.schema.json",
+  "title": "AgentTurn",
+  "description": "Job payload enqueued by Laravel for the FastAPI agent worker. Versioned so the producer and consumer can evolve independently — bump schema_version on any breaking change and gate CI on schema parity between PHP + Python codegen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "conversation_id",
+    "message_id",
+    "business_id",
+    "channel",
+    "enqueued_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Pinned to 1 until a breaking change ships. Workers reject anything else."
+    },
+    "conversation_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID."
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID of the inbound customer message that triggered this turn."
+    },
+    "business_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID of the tenant business; agent loads scope + persona from this."
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["sms", "web"],
+      "description": "Inbound channel. Hybrid conversations still dispatch per-message with the source channel."
+    },
+    "enqueued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 / ISO 8601 UTC. Worker logs queue-to-pickup lag from this."
+    }
+  }
+}

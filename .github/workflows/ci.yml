@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  laravel:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: foyer
+          POSTGRES_PASSWORD: foyer
+          POSTGRES_DB: foyer_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pgsql, redis, mbstring, zip
+
+      - name: Install Composer deps
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      - name: Install btree_gist
+        run: |
+          PGPASSWORD=foyer psql -h 127.0.0.1 -U foyer -d foyer_test -c "CREATE EXTENSION IF NOT EXISTS btree_gist;"
+
+      - name: Run migrations
+        env:
+          DB_CONNECTION: pgsql
+          DB_DATABASE: foyer_test
+          DB_USERNAME: foyer
+          DB_PASSWORD: foyer
+        run: php artisan migrate --force
+
+      - name: Run PHPUnit
+        env:
+          DB_CONNECTION: pgsql
+          DB_DATABASE: foyer_test
+          DB_USERNAME: foyer
+          DB_PASSWORD: foyer
+          DB_SCHEMA: public
+        run: vendor/bin/phpunit
+
+      - name: Pint (style)
+        run: vendor/bin/pint --test
+
+  agent-worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agent worker
+        working-directory: workers/agent
+        run: pip install -e ".[dev]"
+
+      - name: Run pytest
+        working-directory: workers/agent
+        run: pytest
+
+      - name: mypy
+        working-directory: workers/agent
+        run: mypy app.py state_machine.py contracts.py prompts.py llm_adapter.py internal_api.py cost.py
+
+  widget:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install widget deps
+        working-directory: widget
+        run: npm install --no-audit --no-fund
+
+      - name: Build widget
+        working-directory: widget
+        run: node build.mjs
+
+      - name: Widget size gate (≤ 30 KB gzipped)
+        working-directory: widget
+        run: node size-check.mjs

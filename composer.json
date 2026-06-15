@@ -1,0 +1,76 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "philiprehberger/foyer",
+    "type": "project",
+    "description": "Foyer — conversational booking agent for local-service businesses. SMS + web chat, 15-minute slot hold, DB-enforced no-overlap, human-confirm gate.",
+    "keywords": ["booking-agent", "sms", "twilio", "google-calendar", "service-business", "ai-agent", "laravel", "foyer"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "filament/filament": "^5.6",
+        "laravel/framework": "^13.8",
+        "laravel/horizon": "^5.47",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^3.0",
+        "predis/predis": "^3.5",
+        "twilio/sdk": "^8.0",
+        "google/apiclient": "^2.18",
+        "intervention/image": "^3.6",
+        "league/flysystem-aws-s3-v3": "^3.0",
+        "symfony/uid": "^7.0",
+        "ramsey/uuid": "^4.7",
+        "sentry/sentry-laravel": "^4.10",
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "require-dev": {
+        "brianium/paratest": "^7.20",
+        "fakerphp/faker": "^1.23",
+        "hotmeteor/spectator": "^3.0",
+        "laravel/pail": "^1.2.5",
+        "laravel/pint": "^1.27",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "phpunit/phpunit": "^12.5.12",
+        "larastan/larastan": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force"
+        ],
+        "test": "@php artisan test",
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

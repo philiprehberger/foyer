@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://foyer.philiprehberger.com/contracts/agent-turn-response.schema.json",
+  "title": "AgentTurnResponse",
+  "description": "Strict structured-output shape the LLM must return. On parse failure the worker retries up to 2x with a fix-your-JSON reprompt; on the 3rd failure the conversation escalates to human_handoff and the turn is DLQ'd.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "next_phase",
+    "reply_text",
+    "intents",
+    "confidence",
+    "tokens_in",
+    "tokens_out",
+    "cost_micros",
+    "model"
+  ],
+  "properties": {
+    "next_phase": {
+      "type": "string",
+      "enum": [
+        "greet",
+        "identify_service",
+        "collect_address",
+        "collect_timing",
+        "collect_details",
+        "propose_slot",
+        "request_human_confirm",
+        "confirm_to_customer",
+        "completed",
+        "abandon",
+        "out_of_scope",
+        "human_handoff"
+      ],
+      "description": "Next state-machine phase. Worker re-validates against allowed transitions from the current phase."
+    },
+    "reply_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1600,
+      "description": "Customer-facing reply. SMS-friendly; multi-segment is allowed but flagged."
+    },
+    "intents": {
+      "type": "array",
+      "description": "Structured actions the orchestrator must execute (search_slots, hold_slot, request_owner_confirm, etc.).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "args"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "args": {
+            "type": "object",
+            "description": "Free-form per-intent args; validated downstream against per-intent schemas."
+          }
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Self-reported model confidence; below business.human_handoff_threshold triggers escalation."
+    },
+    "tokens_in": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tokens_out": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cost_micros": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Per-turn cost in micros (1_000_000 = $1.00); summed into llm_cost_daily for ceiling enforcement."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Actual model used for this turn — may differ from configured default after cheap-mode degradation."
+    }
+  }
+}
