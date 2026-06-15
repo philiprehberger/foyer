@@ -8,7 +8,7 @@ await build({
     entryPoints: ['src/index.tsx'],
     bundle: true,
     format: 'iife',
-    target: 'es2019',
+    target: 'es2020',
     minify: true,
     sourcemap: false,
     outfile: 'dist/foyer-widget.js',

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ConversationResource\Pages;
 use App\Models\Conversation;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\BadgeColumn;
@@ -12,7 +13,7 @@ class ConversationResource extends Resource
 {
     protected static ?string $model = Conversation::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {

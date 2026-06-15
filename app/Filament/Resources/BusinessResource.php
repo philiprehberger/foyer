@@ -2,14 +2,15 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\BusinessResource\Pages;
 use App\Models\Business;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -18,13 +19,13 @@ class BusinessResource extends Resource
 {
     protected static ?string $model = Business::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->components([
             TextInput::make('name')->required()->maxLength(120),
             TextInput::make('slug')->required()->maxLength(64),
             TextInput::make('timezone')->required()->default('America/Denver'),
