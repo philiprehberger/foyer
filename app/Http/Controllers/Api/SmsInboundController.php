@@ -169,10 +169,14 @@ class SmsInboundController
 
     private function handleKeyword(string $keyword, string $from, string $to, Business $business)
     {
+        // Wording matches what the 10DLC campaign registration documented as
+        // the opt-in / opt-out / help auto-replies. The brand name is
+        // interpolated per business; the rest is identical across tenants so
+        // carrier-side audits of one campaign apply to the rest.
         $reply = match ($keyword) {
-            'stop' => 'You will no longer receive SMS from this number. Reply START to resume.',
-            'start' => 'You have re-subscribed to this number. Reply STOP to opt out at any time.',
-            'help' => "{$business->name}: text us to book service. Standard message and data rates may apply. Reply STOP to opt out.",
+            'stop' => "{$business->name}: You will no longer receive SMS from this number. Reply START to resume.",
+            'start' => "{$business->name}: You are now opted in to the booking line. Reply HELP for help, STOP to opt out. Msg & data rates may apply.",
+            'help' => "{$business->name} booking line. Text to request service. Reply STOP to opt out. Msg & data rates may apply.",
             default => '',
         };
 

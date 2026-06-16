@@ -34,7 +34,10 @@ html, body {
 
 code, pre { font-family: var(--font-mono); }
 
-a { color: var(--color-warm); }
+/* No global anchor color rule — every <Link> sets its own via Tailwind
+   classes (text-white on the hero CTA, text-(--color-ink) on nav, etc.).
+   A global `a { color: ... }` placed outside @layer base wins over
+   utilities and made the hero CTA text the same color as its background. */
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .prose { max-width: 70ch; line-height: 1.65; }

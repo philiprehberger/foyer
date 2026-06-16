@@ -2,15 +2,16 @@
 
 Three providers:
 
-- ``mock``    — deterministic; drives every test in this package. Honours
-                special triggers in the customer message (``OUTSIDE_AREA``,
-                ``STOP_TEST``, ``BAD_JSON``) so tests can exercise the
-                out-of-scope, human-handoff, and parse-failure paths
-                without any model call.
-- ``anthropic`` — real Claude provider. Stubbed; not wired. ``call`` raises
-                ``LLMNotConfigured`` until real credentials + an HTTP
-                client land in a follow-up.
-- ``openai``  — real GPT provider. Same stub posture as Anthropic.
+- ``mock``      — deterministic; drives every test in this package. Honours
+                  special triggers (``OUTSIDE_AREA``, ``STOP_TEST``,
+                  ``BAD_JSON``) so tests can exercise out-of-scope,
+                  human-handoff, and parse-failure paths without an HTTP
+                  call.
+- ``anthropic`` — real Claude provider. POSTs to the Messages API; reports
+                  token + cost. Raises ``LLMNotConfigured`` if
+                  ``ANTHROPIC_API_KEY`` is missing.
+- ``openai``    — real GPT provider. Still stubbed pending review of the
+                  HTTP shape + retry policy.
 
 The adapter contract is the smallest surface area that lets the
 orchestrator stay provider-agnostic: ``call(model, system, user) ->
@@ -23,6 +24,8 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Protocol
+
+import httpx
 
 from state_machine import Phase, allowed_next
 
@@ -200,10 +203,48 @@ class MockProvider:
 # ---------- Real-provider stubs ----------
 
 
+# Anthropic Messages API pricing in micros-per-token. 1_000_000 micros = $1.
+# Sonnet 4.x: $3 / $15 per M = 3 / 15 micros per token.
+# Haiku 4.x: $0.80 / $4 per M = 0.8 / 4 micros per token (rounded up).
+# Opus 4.x: $15 / $75 per M = 15 / 75 micros per token.
+# Unknown models fall back to Sonnet pricing as the safe upper bound.
+_ANTHROPIC_PRICING_MICROS = {
+    "sonnet": (3, 15),
+    "haiku": (1, 4),
+    "opus": (15, 75),
+}
+
+
+def _price_micros(model: str, tokens_in: int, tokens_out: int) -> int:
+    family = "sonnet"
+    for key in _ANTHROPIC_PRICING_MICROS:
+        if key in model.lower():
+            family = key
+            break
+    in_rate, out_rate = _ANTHROPIC_PRICING_MICROS[family]
+    return tokens_in * in_rate + tokens_out * out_rate
+
+
 class AnthropicProvider:
-    """Stub. Wire when ``ANTHROPIC_API_KEY`` is provisioned + reviewed."""
+    """Calls the Anthropic Messages API.
+
+    Requires ``ANTHROPIC_API_KEY`` in env. Uses the JSON shape from
+    https://docs.anthropic.com/en/api/messages — POSTs system + a single
+    user turn, returns the assistant text (which the orchestrator
+    validates against the strict JSON output schema).
+
+    Token + cost accounting comes from the ``usage`` block on the response;
+    cost_micros is derived from the model family rather than echoed back
+    (Anthropic does not report dollar cost in the response).
+    """
 
     name = "anthropic"
+
+    # Anthropic's stable max_tokens default per their docs.
+    _DEFAULT_MAX_TOKENS = 1024
+    _API_URL = "https://api.anthropic.com/v1/messages"
+    _API_VERSION = "2023-06-01"
+    _TIMEOUT_SECONDS = 30.0
 
     async def call(
         self,
@@ -212,12 +253,54 @@ class AnthropicProvider:
         system: str,
         user: str,
     ) -> LLMRawResponse:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not key:
             raise LLMNotConfigured(
                 "ANTHROPIC_API_KEY not set; cannot call real Anthropic provider"
             )
-        raise LLMNotConfigured(
-            "anthropic provider is stubbed — wire the HTTP call in a follow-up"
+
+        body = {
+            "model": model,
+            "max_tokens": self._DEFAULT_MAX_TOKENS,
+            "system": system,
+            "messages": [{"role": "user", "content": user}],
+        }
+
+        async with httpx.AsyncClient(timeout=self._TIMEOUT_SECONDS) as client:
+            response = await client.post(
+                self._API_URL,
+                headers={
+                    "x-api-key": key,
+                    "anthropic-version": self._API_VERSION,
+                    "content-type": "application/json",
+                },
+                json=body,
+            )
+
+        if response.status_code != 200:
+            raise LLMNotConfigured(
+                f"Anthropic API returned {response.status_code}: "
+                f"{response.text[:500]}"
+            )
+
+        payload = response.json()
+        text_blocks = [
+            block.get("text", "")
+            for block in payload.get("content", [])
+            if block.get("type") == "text"
+        ]
+        text = "".join(text_blocks)
+        usage = payload.get("usage", {})
+        tokens_in = int(usage.get("input_tokens", 0))
+        tokens_out = int(usage.get("output_tokens", 0))
+        actual_model = payload.get("model", model)
+
+        return LLMRawResponse(
+            text=text,
+            model=actual_model,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_micros=_price_micros(actual_model, tokens_in, tokens_out),
         )
 
 

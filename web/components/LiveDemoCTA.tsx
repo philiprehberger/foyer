@@ -8,26 +8,49 @@ export function LiveDemoCTA() {
           Try it
         </p>
         <h2 className="text-2xl md:text-3xl font-semibold text-(--color-ink) mb-3">
-          Text the demo number, or chat with Anchor Plumbing in the browser.
+          Text Anchor Plumbing&apos;s booking line to schedule.
         </h2>
         <p className="text-(--color-ink-dim) max-w-2xl mb-8 leading-relaxed">
-          Both channels run the same agent, the same scope guard, the same
-          slot-hold semantics. The demo is bound to a fictional plumber in
-          Boulder, CO — Mon-Fri 8am-5pm, drain-clear / leak-repair /
-          water-heater-install. Out-of-area, out-of-hours, and out-of-scope
-          requests all hit the fallback without committing.
+          Anchor Plumbing serves Boulder, CO (ZIPs 80301-80310). Open Mon-Fri
+          8am-5pm Mountain. Services: drain clearing, leak repair, water
+          heater install. Text the number below to request service — the
+          booking assistant will ask for the service type, address, and
+          preferred time, then send a confirmation once the slot is held.
         </p>
         <div className="grid sm:grid-cols-2 gap-4 mb-8">
           <div className="rounded-lg border border-(--color-paper-deep) bg-white/70 p-5">
             <p className="text-xs uppercase tracking-widest text-(--color-ink-faint) mb-1">
-              SMS
+              Text to book
             </p>
-            <p className="text-2xl font-mono text-(--color-ink) tracking-tight">
-              +1 (720) 555-0199
+            <a
+              href="sms:+19704698922"
+              className="block text-2xl font-mono text-(--color-ink) tracking-tight no-underline"
+            >
+              (970) 469-8922
+            </a>
+            <p className="text-sm text-(--color-ink-dim) mt-2 leading-snug">
+              Send any message describing the service you need — the
+              assistant will reply to gather the details. Reply HELP for
+              help, STOP to opt out at any time.
             </p>
-            <p className="text-xs text-(--color-ink-dim) mt-2">
-              US numbers only — international toll fraud destinations blocked.
-              Three conversations per day per source number.
+            <p className="text-xs text-(--color-ink-faint) mt-2">
+              Message frequency is conversational and reply-only (typically
+              4-10 messages per booking session). Msg &amp; data rates may
+              apply. By texting this number you agree to the{" "}
+              <Link
+                href="/terms"
+                className="text-(--color-warm-deep) underline underline-offset-2"
+              >
+                terms
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="text-(--color-warm-deep) underline underline-offset-2"
+              >
+                privacy policy
+              </Link>
+              .
             </p>
           </div>
           <div className="rounded-lg border border-(--color-paper-deep) bg-white/70 p-5">
@@ -35,8 +58,8 @@ export function LiveDemoCTA() {
               Web chat
             </p>
             <p className="text-(--color-ink) leading-snug">
-              The same widget that ships to customer sites — embedded directly
-              on the demo page.
+              The same widget that ships to customer sites — embedded
+              directly on the demo page.
             </p>
             <Link
               href="/demo"
@@ -46,10 +69,6 @@ export function LiveDemoCTA() {
             </Link>
           </div>
         </div>
-        <p className="text-xs text-(--color-ink-faint)">
-          Abuse protections — per-IP and per-number rate limits, profanity and
-          prompt-injection filter, Twilio spend ceiling, hourly demo state reset.
-        </p>
       </div>
     </section>
   );

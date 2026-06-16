@@ -35,34 +35,55 @@ export default function Demo() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <header className="mb-10">
         <p className="text-xs uppercase tracking-widest text-(--color-warm-deep) mb-2">
-          Live demo
+          Anchor Plumbing
         </p>
         <h1 className="text-3xl md:text-4xl font-semibold text-(--color-ink) mb-3 tracking-tight">
           Anchor Plumbing — Boulder, CO
         </h1>
         <p className="text-(--color-ink-dim) max-w-2xl leading-relaxed">
-          Fictional shop, real agent. Drain-clear, leak-repair, water-heater-install.
-          Service area is Boulder ZIPs 80301-80310. Open Mon-Fri 8am-5pm.
-          Quiet hours 9pm-8am Mountain. Try the SMS number or the web widget
-          below — both run the same agent against the same business config.
+          Drain clearing, leak repair, and water heater install in Boulder, CO
+          (ZIPs 80301-80310). Open Mon-Fri 8am-5pm Mountain. Text our booking
+          line below to schedule, or use the web chat — both reach the same
+          booking assistant.
         </p>
       </header>
 
       <div className="grid lg:grid-cols-2 gap-8 mb-10">
         <div className="rounded-lg border border-(--color-paper-deep) bg-white/60 p-6">
           <p className="text-xs uppercase tracking-widest text-(--color-ink-faint) mb-2">
-            SMS
+            Text to book service
           </p>
-          <p className="text-2xl font-mono text-(--color-ink) tracking-tight mb-3">
-            +1 (720) 555-0199
+          <a
+            href="sms:+19704698922"
+            className="block text-2xl font-mono text-(--color-ink) tracking-tight mb-3 no-underline"
+          >
+            (970) 469-8922
+          </a>
+          <p className="text-sm text-(--color-ink-dim) leading-relaxed mb-3">
+            Send any message describing the service you need. The booking
+            assistant will ask for the service type, address, and preferred
+            time, then send a confirmation once the slot is held.
           </p>
-          <p className="text-sm text-(--color-ink-dim) leading-relaxed mb-1">
-            Text the number above. The agent will introduce itself, collect
-            address and timing, and propose a slot. The proposed slot then
-            shows up in the owner inbox panel on the right of this page.
-          </p>
-          <p className="text-xs text-(--color-ink-faint) mt-3">
-            US numbers only. Three conversations per day per source number.
+          <p className="text-xs text-(--color-ink-dim) leading-snug">
+            Reply <strong>HELP</strong> for help, <strong>STOP</strong> to
+            opt out at any time. Message frequency is conversational and
+            reply-only (typically 4-10 messages per booking session). Message
+            and data rates may apply. By texting this number you agree to
+            our{" "}
+            <a
+              href="/terms"
+              className="text-(--color-warm-deep) underline underline-offset-2"
+            >
+              terms
+            </a>{" "}
+            and{" "}
+            <a
+              href="/privacy"
+              className="text-(--color-warm-deep) underline underline-offset-2"
+            >
+              privacy policy
+            </a>
+            .
           </p>
         </div>
         <div className="rounded-lg border border-(--color-paper-deep) bg-white/60 p-6">
