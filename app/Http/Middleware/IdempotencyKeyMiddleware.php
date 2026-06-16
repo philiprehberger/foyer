@@ -6,7 +6,7 @@ use App\Models\IdempotencyKey;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Owner-facing mutating endpoints that side-effect outside Foyer

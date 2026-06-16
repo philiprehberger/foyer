@@ -134,6 +134,15 @@ class SmsInboundController
     private function insertIfNew(array $row): bool
     {
         try {
+            // DB::table()->insert bypasses Eloquent casts, so jsonb columns
+            // (attachments, intent) need explicit JSON encoding before send.
+            if (isset($row['attachments']) && is_array($row['attachments'])) {
+                $row['attachments'] = json_encode($row['attachments']);
+            }
+            if (isset($row['intent']) && is_array($row['intent'])) {
+                $row['intent'] = json_encode($row['intent']);
+            }
+
             DB::table('messages')->insert($row);
 
             return true;
