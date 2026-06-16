@@ -23,7 +23,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
 
@@ -194,7 +194,7 @@ class MockProvider:
             "model": model,
         }
 
-    def _wrap(self, payload: dict[str, object], model: str) -> LLMRawResponse:
+    def _wrap(self, payload: dict[str, Any], model: str) -> LLMRawResponse:
         return LLMRawResponse(
             text=json.dumps(payload),
             model=model,

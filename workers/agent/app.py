@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncIterator, cast
 
 import structlog
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
@@ -112,15 +112,15 @@ app = FastAPI(
 
 
 def get_provider(request: Request) -> LLMProvider:
-    return request.app.state.provider
+    return cast(LLMProvider, request.app.state.provider)
 
 
 def get_cost_tracker(request: Request) -> CostTracker:
-    return request.app.state.cost_tracker
+    return cast(CostTracker, request.app.state.cost_tracker)
 
 
 def get_internal_config(request: Request) -> InternalAPIConfig:
-    return request.app.state.internal_config
+    return cast(InternalAPIConfig, request.app.state.internal_config)
 
 
 async def require_internal_signature(
