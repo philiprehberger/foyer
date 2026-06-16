@@ -19,6 +19,7 @@ class ConsentState extends Model
     ];
 
     public const SUBSCRIBED = 'subscribed';
+
     public const STOPPED = 'stopped';
 
     public static function isStopped(string $customerE164, string $twilioE164): bool

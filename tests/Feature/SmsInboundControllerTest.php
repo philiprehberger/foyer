@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\TwilioSignatureMiddleware;
 use App\Jobs\DispatchAgentTurn;
 use App\Models\Business;
 use App\Models\ConsentState;
@@ -33,7 +34,7 @@ class SmsInboundControllerTest extends TestCase
     {
         $biz = $this->makeBusiness('+15555550199');
 
-        $resp = $this->withoutMiddleware(\App\Http\Middleware\TwilioSignatureMiddleware::class)
+        $resp = $this->withoutMiddleware(TwilioSignatureMiddleware::class)
             ->post('/v1/sms/inbound', [
                 'MessageSid' => 'SM-stop-1',
                 'From' => '+15551112222',
@@ -63,10 +64,10 @@ class SmsInboundControllerTest extends TestCase
             'NumMedia' => 0,
         ];
 
-        $this->withoutMiddleware(\App\Http\Middleware\TwilioSignatureMiddleware::class)
+        $this->withoutMiddleware(TwilioSignatureMiddleware::class)
             ->post('/v1/sms/inbound', $payload)->assertStatus(200);
 
-        $this->withoutMiddleware(\App\Http\Middleware\TwilioSignatureMiddleware::class)
+        $this->withoutMiddleware(TwilioSignatureMiddleware::class)
             ->post('/v1/sms/inbound', $payload)->assertStatus(200);
 
         $this->assertSame(1, \DB::table('messages')->where('external_id', 'SM-dupe-1')->count());

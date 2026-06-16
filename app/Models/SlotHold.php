@@ -27,8 +27,11 @@ class SlotHold extends Model
     ];
 
     public const ACTIVE = 'active';
+
     public const EXPIRED = 'expired';
+
     public const CONFIRMED = 'confirmed';
+
     public const RELEASED = 'released';
 
     protected static function booted(): void

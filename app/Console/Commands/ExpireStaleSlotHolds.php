@@ -50,7 +50,7 @@ class ExpireStaleSlotHolds extends Command
                 $conv->id,
                 $conv->customer_phone_e164,
                 $twilio->number_e164,
-                "That slot is no longer available — want me to check another time?",
+                'That slot is no longer available — want me to check another time?',
             );
         }
 

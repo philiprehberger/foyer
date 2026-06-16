@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\MessageDelivery;
+use App\Services\ConsentStateMachine;
 use App\Services\QuietHoursService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,6 +32,7 @@ class SendOutboundSms implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public int $backoff = 30;
 
     public function __construct(
@@ -55,7 +57,7 @@ class SendOutboundSms implements ShouldQueue
         }
 
         // STOP wins, no override.
-        if (\App\Services\ConsentStateMachine::isStopped($this->toE164, $this->fromE164)) {
+        if (ConsentStateMachine::isStopped($this->toE164, $this->fromE164)) {
             $this->delete();
 
             return;

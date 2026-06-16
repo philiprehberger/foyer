@@ -31,9 +31,13 @@ class Message extends Model
     ];
 
     public const ROLE_CUSTOMER = 'customer';
+
     public const ROLE_AGENT = 'agent';
+
     public const ROLE_OWNER = 'owner';
+
     public const ROLE_SYSTEM = 'system';
+
     public const ROLE_TOOL = 'tool';
 
     protected static function booted(): void

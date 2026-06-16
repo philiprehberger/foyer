@@ -27,9 +27,7 @@ use Carbon\CarbonInterface;
  */
 class SlotSearchService
 {
-    public function __construct(private readonly CalendarConnector $calendar)
-    {
-    }
+    public function __construct(private readonly CalendarConnector $calendar) {}
 
     /**
      * @return array<int, array{start: CarbonInterface, end: CarbonInterface}>

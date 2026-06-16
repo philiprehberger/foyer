@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\DB;
 class ConsentStateMachine
 {
     public const KEYWORDS_STOP = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
+
     public const KEYWORDS_START = ['START', 'YES', 'UNSTOP'];
+
     public const KEYWORDS_HELP = ['HELP', 'INFO'];
 
     public static function classify(string $body): ?string

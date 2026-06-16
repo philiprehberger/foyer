@@ -26,9 +26,7 @@ use Symfony\Component\Uid\Ulid;
  */
 class SlotHoldService
 {
-    public function __construct(private readonly CalendarConnector $calendar)
-    {
-    }
+    public function __construct(private readonly CalendarConnector $calendar) {}
 
     /**
      * @throws SlotAlreadyHeldException
@@ -72,7 +70,7 @@ class SlotHoldService
             try {
                 $eventId = $this->calendar->createTentativeEvent(
                     $business->google_calendar_id,
-                    "Foyer hold — pending",
+                    'Foyer hold — pending',
                     $start,
                     $end,
                     ['conversation_id' => $conversation->id],

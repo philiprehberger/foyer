@@ -28,8 +28,11 @@ class Booking extends Model
     ];
 
     public const PENDING = 'pending';
+
     public const CONFIRMED = 'confirmed';
+
     public const CANCELED = 'canceled';
+
     public const COMPLETED = 'completed';
 
     protected static function booted(): void

@@ -15,6 +15,7 @@ class FakeCalendarConnector implements CalendarConnector
     public array $events = [];
 
     public bool $createShouldFail = false;
+
     public int $autoIncrement = 0;
 
     public function createTentativeEvent(

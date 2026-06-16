@@ -1,8 +1,8 @@
 <?php
 
-use App\Console\Commands\ExpireStaleSlotHolds;
 use App\Console\Commands\CalendarSyncFallbackPoll;
 use App\Console\Commands\DemoReset;
+use App\Console\Commands\ExpireStaleSlotHolds;
 use Illuminate\Support\Facades\Schedule;
 
 // Slot-hold cleanup — every 60s. Releases expired holds + deletes Calendar

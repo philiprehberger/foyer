@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\BindToLoopbackMiddleware;
+use App\Http\Middleware\IdempotencyKeyMiddleware;
+use App\Http\Middleware\InternalHmacMiddleware;
+use App\Http\Middleware\TwilioSignatureMiddleware;
 use App\Http\Responses\ProblemResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,10 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'twilio.sig' => \App\Http\Middleware\TwilioSignatureMiddleware::class,
-            'internal.hmac' => \App\Http\Middleware\InternalHmacMiddleware::class,
-            'internal.loopback' => \App\Http\Middleware\BindToLoopbackMiddleware::class,
-            'idempotency' => \App\Http\Middleware\IdempotencyKeyMiddleware::class,
+            'twilio.sig' => TwilioSignatureMiddleware::class,
+            'internal.hmac' => InternalHmacMiddleware::class,
+            'internal.loopback' => BindToLoopbackMiddleware::class,
+            'idempotency' => IdempotencyKeyMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -41,7 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             );
         });
 
-        $exceptions->render(function (\Throwable $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if (! ($request->is('v1/*') || $request->expectsJson())) {
                 return null;
             }

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,10 +28,10 @@ return new class extends Migration
         });
 
         // Partial index for cross-channel resume lookup
-        \Illuminate\Support\Facades\DB::statement(
+        DB::statement(
             'CREATE INDEX conversations_resume ON conversations '
-            . '(business_id, customer_phone_e164, started_at DESC) '
-            . 'WHERE phone_verified_at IS NOT NULL'
+            .'(business_id, customer_phone_e164, started_at DESC) '
+            .'WHERE phone_verified_at IS NOT NULL'
         );
     }
 

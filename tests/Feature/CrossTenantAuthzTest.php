@@ -78,7 +78,7 @@ class CrossTenantAuthzTest extends TestCase
 
     public function test_alice_cannot_toggle_bobs_kill_switch(): void
     {
-        [$alice, ] = $this->makeUserAndBusiness('Alice');
+        [$alice] = $this->makeUserAndBusiness('Alice');
         [, $bobBiz] = $this->makeUserAndBusiness('Bob');
 
         Sanctum::actingAs($alice);

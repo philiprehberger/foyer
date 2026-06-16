@@ -2,6 +2,7 @@
 
 namespace App\Services\Calendar;
 
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as CalendarService;
@@ -23,9 +24,7 @@ use Google\Service\Calendar\EventDateTime;
  */
 class GoogleCalendarConnector implements CalendarConnector
 {
-    public function __construct(private readonly CalendarService $service)
-    {
-    }
+    public function __construct(private readonly CalendarService $service) {}
 
     public static function forRefreshToken(string $refreshToken): self
     {
@@ -105,8 +104,8 @@ class GoogleCalendarConnector implements CalendarConnector
                 continue;
             }
             $items[] = [
-                'start' => \Carbon\CarbonImmutable::parse($start),
-                'end' => \Carbon\CarbonImmutable::parse($end),
+                'start' => CarbonImmutable::parse($start),
+                'end' => CarbonImmutable::parse($end),
                 'event_id' => $event->getId(),
             ];
         }
