@@ -48,6 +48,7 @@ jobs:
           DB_DATABASE: foyer_test
           DB_USERNAME: foyer
           DB_PASSWORD: foyer
+          DB_SCHEMA: public
         run: php artisan migrate --force
 
       - name: Run PHPUnit

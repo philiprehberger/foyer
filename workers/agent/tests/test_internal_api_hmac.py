@@ -84,8 +84,12 @@ def test_verify_signature_empty_string_rejects() -> None:
 
 
 @pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
+def client():
+    # `with TestClient(app)` is what fires FastAPI's lifespan handler — bare
+    # `TestClient(app)` skips it and app.state.provider / internal_config
+    # never get populated, every endpoint then 500s with AttributeError.
+    with TestClient(app) as c:
+        yield c
 
 
 def test_healthz_does_not_require_signature(client: TestClient) -> None:

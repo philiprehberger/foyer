@@ -120,8 +120,12 @@ class MockProvider:
         handoff = _TRIGGER_HUMAN_HANDOFF in user
 
         if bad_json:
-            # Intentionally malformed; the worker should reject + retry.
-            text = "{not valid json, oops"
+            # Intentionally malformed. The trigger string is echoed inside the
+            # broken output so the worker's repair prompt — which embeds the
+            # verbatim previous output — carries BAD_JSON forward into the
+            # next user message. That keeps the trigger sticky across retries
+            # so tests can exercise the full parse-failure exhaustion path.
+            text = "{BAD_JSON: not valid json, oops"
             return LLMRawResponse(
                 text=text, model=model, tokens_in=10, tokens_out=8, cost_micros=120
             )

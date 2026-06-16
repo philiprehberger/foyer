@@ -47,7 +47,11 @@ def _walk(start: Phase, choices: list[int], max_steps: int = 30) -> list[Phase]:
 
 
 @given(
-    start=_active_phase_strategy,
+    # Only GREET makes the invariant load-bearing — real conversations always
+    # start there. Starting from CONFIRM_TO_CUSTOMER and stepping to COMPLETED
+    # is one legal hop and doesn't violate the property we actually care about,
+    # which is "no agent ever reaches `completed` without first holding a slot
+    # in `propose_slot`."
     choices=st.lists(st.integers(min_value=0, max_value=100), min_size=1, max_size=30),
 )
 @settings(
@@ -55,8 +59,8 @@ def _walk(start: Phase, choices: list[int], max_steps: int = 30) -> list[Phase]:
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow],
 )
-def test_completed_requires_propose_slot(start: Phase, choices: list[int]) -> None:
-    path = _walk(start, choices)
+def test_completed_requires_propose_slot(choices: list[int]) -> None:
+    path = _walk(Phase.GREET, choices)
     if Phase.COMPLETED in path:
         assert Phase.PROPOSE_SLOT in path, (
             f"path reached completed without propose_slot: "
