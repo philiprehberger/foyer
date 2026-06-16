@@ -10,7 +10,6 @@ use App\Models\Message;
 use App\Models\PhoneNumber;
 use App\Services\ConsentStateMachine;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Uid\Ulid;
@@ -127,35 +126,29 @@ class SmsInboundController
     }
 
     /**
-     * Insert with `ON CONFLICT (external_id) DO NOTHING`-equivalent semantics
-     * by catching the unique-constraint violation. Returns true if a new row
-     * was inserted; false if the row already existed (Twilio retry).
+     * Insert with `ON CONFLICT (external_id) DO NOTHING` semantics. Returns
+     * true if a new row was inserted; false if the row already existed
+     * (Twilio retry).
+     *
+     * Earlier shape was try-insert + catch 23505 — that pattern is fine on
+     * MySQL/SQLite but Postgres aborts the entire transaction on any error
+     * raised inside it (SQLSTATE 25P02 thereafter). Under RefreshDatabase
+     * the per-test transaction would die on every duplicate, so we use
+     * insertOrIgnore which translates to native `ON CONFLICT DO NOTHING`
+     * on the pgsql grammar and leaves the transaction healthy.
      */
     private function insertIfNew(array $row): bool
     {
-        try {
-            // DB::table()->insert bypasses Eloquent casts, so jsonb columns
-            // (attachments, intent) need explicit JSON encoding before send.
-            if (isset($row['attachments']) && is_array($row['attachments'])) {
-                $row['attachments'] = json_encode($row['attachments']);
-            }
-            if (isset($row['intent']) && is_array($row['intent'])) {
-                $row['intent'] = json_encode($row['intent']);
-            }
-
-            DB::table('messages')->insert($row);
-
-            return true;
-        } catch (QueryException $e) {
-            $code = $e->errorInfo[0] ?? '';
-
-            // 23505 = Postgres unique_violation
-            if ($code === '23505') {
-                return false;
-            }
-
-            throw $e;
+        // DB::table()->insertOrIgnore bypasses Eloquent casts, so jsonb
+        // columns need explicit JSON encoding before send.
+        if (isset($row['attachments']) && is_array($row['attachments'])) {
+            $row['attachments'] = json_encode($row['attachments']);
         }
+        if (isset($row['intent']) && is_array($row['intent'])) {
+            $row['intent'] = json_encode($row['intent']);
+        }
+
+        return DB::table('messages')->insertOrIgnore($row) > 0;
     }
 
     /**

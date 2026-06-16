@@ -7,7 +7,6 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\WebSession;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Uid\Ulid;
@@ -144,26 +143,19 @@ class WebInboundController
         ]);
     }
 
+    // Uses insertOrIgnore -> ON CONFLICT DO NOTHING so a duplicate
+    // widget_message_id can't poison the outer test transaction (Postgres
+    // aborts the whole transaction on any unhandled error). See the matching
+    // comment on SmsInboundController::insertIfNew for the full reasoning.
     private function insertIfNew(array $row): bool
     {
-        try {
-            // jsonb columns need explicit JSON encoding when bypassing Eloquent.
-            if (isset($row['attachments']) && is_array($row['attachments'])) {
-                $row['attachments'] = json_encode($row['attachments']);
-            }
-            if (isset($row['intent']) && is_array($row['intent'])) {
-                $row['intent'] = json_encode($row['intent']);
-            }
-
-            DB::table('messages')->insert($row);
-
-            return true;
-        } catch (QueryException $e) {
-            if (($e->errorInfo[0] ?? '') === '23505') {
-                return false;
-            }
-
-            throw $e;
+        if (isset($row['attachments']) && is_array($row['attachments'])) {
+            $row['attachments'] = json_encode($row['attachments']);
         }
+        if (isset($row['intent']) && is_array($row['intent'])) {
+            $row['intent'] = json_encode($row['intent']);
+        }
+
+        return DB::table('messages')->insertOrIgnore($row) > 0;
     }
 }
