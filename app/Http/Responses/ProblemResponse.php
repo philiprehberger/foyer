@@ -77,6 +77,13 @@ class ProblemResponse extends JsonResponse
         if ($e instanceof \Illuminate\Validation\ValidationException) {
             return Response::HTTP_BAD_REQUEST;
         }
+        // abort(403) / abort(404) and friends throw Symfony HttpException with
+        // the status code on the exception itself. Without this branch every
+        // abort(403) falls through to 500 and the cross-tenant authz tests
+        // (which assert 403) see 500.
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException) {
+            return $e->getStatusCode();
+        }
 
         return Response::HTTP_INTERNAL_SERVER_ERROR;
     }

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\DispatchAgentTurn;
 use App\Models\Business;
 use App\Models\ConsentState;
 use App\Models\PhoneNumber;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 class SmsInboundControllerTest extends TestCase
@@ -20,6 +22,11 @@ class SmsInboundControllerTest extends TestCase
         // call the controller-equivalent path by faking the middleware off
         // via env config.
         config()->set('services.twilio.auth_token', 'test-token-shared');
+
+        // The webhook dispatches DispatchAgentTurn synchronously under the
+        // sync queue driver, which then POSTs to the FastAPI worker. CI has
+        // no worker — Bus::fake captures dispatches without running handle().
+        Bus::fake();
     }
 
     public function test_stop_keyword_writes_consent_state_and_no_agent_dispatch(): void
@@ -63,6 +70,10 @@ class SmsInboundControllerTest extends TestCase
             ->post('/v1/sms/inbound', $payload)->assertStatus(200);
 
         $this->assertSame(1, \DB::table('messages')->where('external_id', 'SM-dupe-1')->count());
+
+        // The whole point of the dedup gate: the first inbound dispatches a
+        // single AgentTurn, the second short-circuits at the unique index.
+        Bus::assertDispatchedTimes(DispatchAgentTurn::class, 1);
     }
 
     private function makeBusiness(string $twilioE164): Business
