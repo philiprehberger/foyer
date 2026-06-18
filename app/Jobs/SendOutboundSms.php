@@ -80,7 +80,11 @@ class SendOutboundSms implements ShouldQueue
                 'external_id' => 'outbound:'.$messageId,
                 'role' => Message::ROLE_AGENT,
                 'text' => $this->body,
-                'phase' => $conversation->currentPhase(),
+                // Delivery rows don't carry phase — phase is a property of
+                // the agent's intent, persisted by AgentTurnResultController
+                // on the 'agent:' row. Setting it here creates a duplicate
+                // phase entry that currentPhase() can race on.
+                'phase' => null,
                 'created_at' => now(),
             ],
         );

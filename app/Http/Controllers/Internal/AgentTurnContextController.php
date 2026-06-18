@@ -26,8 +26,12 @@ class AgentTurnContextController
         $conversation = Conversation::query()->findOrFail($conversationId);
         $business = Business::query()->findOrFail($conversation->business_id);
 
+        // ->reorder() because the messages() relationship has a baked-in
+        // ASC order that would otherwise win and make this query return the
+        // OLDEST window instead of the most recent.
         $recent = $conversation->messages()
-            ->orderByDesc('created_at')
+            ->reorder('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->limit(self::TURN_WINDOW_MESSAGES)
             ->get()
             ->reverse()
@@ -45,6 +49,13 @@ class AgentTurnContextController
             ->whereDate('date', now()->toDateString())
             ->value('cost_micros') ?? 0);
 
+        $resolvedPhase = $conversation->currentPhase() ?: 'greet';
+        \Illuminate\Support\Facades\Log::info('agent.turn-context.resolved', [
+            'conversation_id' => $conversation->id,
+            'current_phase' => $resolvedPhase,
+            'recent_phases' => $recent->pluck('phase', 'external_id')->toArray(),
+        ]);
+
         return response()->json([
             'conversation_id' => $conversation->id,
             'business' => [
@@ -60,7 +71,7 @@ class AgentTurnContextController
                 'cost_ceiling_micros' => (int) $business->cost_ceiling_micros,
                 'cheap_mode_model' => 'claude-haiku-4-5',
             ],
-            'current_phase' => $conversation->currentPhase() ?: 'greet',
+            'current_phase' => $resolvedPhase,
             'messages' => $messages,
             'last_user_message' => (string) ($lastUserMessage?->text ?? ''),
             'cumulative_cost_micros_today' => $costToday,

@@ -29,11 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('v1/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('v1/*') || $request->is('_internal/*') || $request->expectsJson(),
         );
 
         $exceptions->render(function (ValidationException $e, Request $request) {
-            if (! ($request->is('v1/*') || $request->expectsJson())) {
+            if (! ($request->is('v1/*') || $request->is('_internal/*') || $request->expectsJson())) {
                 return null;
             }
 
@@ -46,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Throwable $e, Request $request) {
-            if (! ($request->is('v1/*') || $request->expectsJson())) {
+            if (! ($request->is('v1/*') || $request->is('_internal/*') || $request->expectsJson())) {
                 return null;
             }
 

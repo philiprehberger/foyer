@@ -56,10 +56,18 @@ class SmsInboundController
 
         $business = Business::query()->findOrFail($phone->business_id);
 
-        // STOP / START / HELP — first responder.
+        // STOP / START / HELP — first responder. Special-case for 'YES' (a
+        // CTIA opt-in synonym): only honor as a START reactivation when the
+        // customer is currently STOPPED. Otherwise pass the natural-language
+        // 'yes' through to the agent (e.g. confirming an address).
         $keyword = ConsentStateMachine::classify($body);
         if ($keyword !== null) {
-            return $this->handleKeyword($keyword, $from, $to, $business);
+            $isYesEcho = $keyword === 'start'
+                && strtoupper(trim($body)) === 'YES'
+                && ! ConsentStateMachine::isStopped($from, $to);
+            if (! $isYesEcho) {
+                return $this->handleKeyword($keyword, $from, $to, $business);
+            }
         }
 
         if (ConsentStateMachine::isStopped($from, $to)) {

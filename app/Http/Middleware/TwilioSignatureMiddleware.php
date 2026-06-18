@@ -36,9 +36,62 @@ class TwilioSignatureMiddleware
         $url = $request->fullUrl();
         $params = $request->isMethod('POST') ? $request->post() : [];
 
-        $expected = $this->compute($url, $params, $token);
+        // Twilio's official validators check the URL both with and without
+        // an explicit default port — we have to accept either. Their
+        // server-side signing can include or omit ":443" depending on the
+        // network path / load balancer.
+        $parsed = parse_url($url);
+        $urlWithPort = null;
+        if ($parsed !== false && ! isset($parsed['port'])) {
+            $port = ($parsed['scheme'] ?? 'https') === 'https' ? 443 : 80;
+            $urlWithPort = sprintf(
+                '%s://%s:%d%s%s',
+                $parsed['scheme'] ?? 'https',
+                $parsed['host'] ?? '',
+                $port,
+                $parsed['path'] ?? '',
+                isset($parsed['query']) ? '?'.$parsed['query'] : '',
+            );
+        }
 
-        if (! hash_equals($expected, $provided)) {
+        $expected = $this->compute($url, $params, $token);
+        $expectedWithPort = $urlWithPort !== null ? $this->compute($urlWithPort, $params, $token) : null;
+
+        $matched = hash_equals($expected, $provided)
+            || ($expectedWithPort !== null && hash_equals($expectedWithPort, $provided));
+
+        if (! $matched) {
+            // Build the canonical string we hashed so we can diff against
+            // Twilio's. Truncate body to avoid log-line bloat from long SMS.
+            $sorted = $params;
+            ksort($sorted);
+            $canonical = $url;
+            foreach ($sorted as $k => $v) {
+                $val = is_array($v) ? json_encode($v) : (string) $v;
+                $canonical .= $k.$val;
+            }
+
+            \Illuminate\Support\Facades\Log::warning('twilio.signature.invalid', [
+                'url_used' => $url,
+                'url_with_port' => $urlWithPort,
+                'scheme' => $request->getScheme(),
+                'fwd_proto' => $request->header('X-Forwarded-Proto'),
+                'fwd_host' => $request->header('X-Forwarded-Host'),
+                'host_header' => $request->header('Host'),
+                'param_keys' => array_keys($sorted),
+                'msg_sid' => $params['MessageSid'] ?? null,
+                'from' => $params['From'] ?? null,
+                'to' => $params['To'] ?? null,
+                'body_snippet' => mb_substr((string) ($params['Body'] ?? ''), 0, 60),
+                'expected_sig' => $expected,
+                'expected_sig_with_port' => $expectedWithPort,
+                'provided_sig' => $provided,
+                'token_tail' => substr($token, -4),
+                'canonical_len' => strlen($canonical),
+                'canonical_head' => substr($canonical, 0, 200),
+                'canonical_tail' => substr($canonical, -200),
+            ]);
+
             return $this->problem(403, 'twilio-signature-invalid',
                 'X-Twilio-Signature did not validate.');
         }

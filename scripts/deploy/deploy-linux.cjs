@@ -776,8 +776,12 @@ async function deploy(options = {}) {
         log('✅', 'Apache reloaded');
 
         log('♻️', ' Restarting queue workers...');
-        await execSSH(ssh, 'sudo supervisorctl restart foyer-horizon:* 2>/dev/null || true; sudo systemctl reload php8.3-fpm', { ignoreError: true });
-        log('✅', 'Queue workers + php-fpm reloaded');
+        // RESTART (not reload) php-fpm. SIGUSR2 reload doesn't invalidate
+        // per-worker OPcache, so workers keep serving the previous release's
+        // bootstrap/cache/config.php — causes intermittent stale-config bugs
+        // (signature mismatches, missing env, stale model classes).
+        await execSSH(ssh, 'sudo supervisorctl restart foyer-horizon:* 2>/dev/null || true; sudo systemctl restart php8.3-fpm', { ignoreError: true });
+        log('✅', 'Queue workers + php-fpm restarted');
 
         // ==== CREATE SENTRY RELEASE ====
         createSentryRelease(releaseName);

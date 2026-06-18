@@ -27,7 +27,10 @@ class AgentTurnResultController
     public function __invoke(Request $request, string $conversationId): JsonResponse
     {
         $data = $request->validate([
-            'message_id' => 'required|string|size:26',
+            // The worker doesn't currently mint a per-turn ULID; Laravel
+            // generates one server-side if absent. Kept nullable (not absent)
+            // so a worker that does start sending one in future stays valid.
+            'message_id' => 'nullable|string|size:26',
             'next_phase' => 'required|string|max:64',
             'reply_text' => 'nullable|string|max:4000',
             'intents' => 'array',
@@ -42,9 +45,20 @@ class AgentTurnResultController
 
         $conversation = Conversation::query()->findOrFail($conversationId);
 
-        DB::transaction(function () use ($data, $conversation) {
-            // Idempotent: insert if external_id (worker-supplied) doesn't yet exist.
-            $external = 'agent:'.$data['message_id'];
+        \Illuminate\Support\Facades\Log::info('agent.turn-result.posted', [
+            'conversation_id' => $conversationId,
+            'next_phase' => $data['next_phase'],
+            'reply_text_snippet' => substr($data['reply_text'] ?? '', 0, 80),
+            'model' => $data['model'] ?? null,
+        ]);
+
+        $messageId = $data['message_id'] ?? (string) new Ulid;
+
+        DB::transaction(function () use ($data, $conversation, $messageId) {
+            // Idempotent: insert if external_id doesn't yet exist. message_id
+            // is worker-supplied when present (deterministic-retry-safe) or
+            // server-generated when absent (still unique per request).
+            $external = 'agent:'.$messageId;
             $alreadyHave = Message::query()->where('external_id', $external)->exists();
             if ($alreadyHave) {
                 return;

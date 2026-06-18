@@ -68,9 +68,22 @@ class Conversation extends Model
      */
     public function currentPhase(): ?string
     {
+        // Only agent-intent rows carry meaningful phase. The 'outbound:' rows
+        // SendOutboundSms inserts are delivery records — their phase is a
+        // stale read of currentPhase() at dispatch time, and including them
+        // here creates a feedback loop that pins the conversation to the
+        // previous phase forever.
+        // ->reorder() is required because the messages() relationship is
+        // declared with a baked-in orderBy('created_at') ASC. Without the
+        // reorder, our DESC clauses get appended after the ASC and have no
+        // effect — value('phase') then returns the OLDEST matching row, not
+        // the newest, and the conversation regresses to the first agent
+        // turn's phase on every read.
         return $this->messages()
             ->whereNotNull('phase')
-            ->orderByDesc('created_at')
+            ->where('external_id', 'not like', 'outbound:%')
+            ->reorder('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->value('phase');
     }
 }
