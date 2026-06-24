@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 module.exports = {
   server: {
-    host: '54.190.150.0',
+    host: '35.80.110.71',
     username: 'ubuntu',
     privateKeyPath: require('os').homedir() + '/.ssh/ps4_new',
   },
