@@ -755,6 +755,7 @@ async function deploy(options = {}) {
         await execSSH(ssh, `cd ${releasePath} && php artisan config:cache`);
         await execSSH(ssh, `cd ${releasePath} && php artisan route:cache`);
         await execSSH(ssh, `cd ${releasePath} && php artisan view:cache`);
+        await execSSH(ssh, `cd ${releasePath} && php artisan event:cache`);
         log('✅', 'Artisan optimization completed');
 
         // ==== RUN MIGRATIONS ====
@@ -989,6 +990,7 @@ async function clearCachedConfigs() {
         await execSSH(ssh, `cd ${currentPath} && php artisan config:cache`);
         await execSSH(ssh, `cd ${currentPath} && php artisan route:cache`);
         await execSSH(ssh, `cd ${currentPath} && php artisan view:cache`);
+        await execSSH(ssh, `cd ${currentPath} && php artisan event:cache`);
 
         // Reload Apache
         log('♻️', ' Reloading Apache...');
