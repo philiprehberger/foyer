@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * GET /_internal/conversations/{conversation}/turn-context
@@ -50,7 +51,7 @@ class AgentTurnContextController
             ->value('cost_micros') ?? 0);
 
         $resolvedPhase = $conversation->currentPhase() ?: 'greet';
-        \Illuminate\Support\Facades\Log::info('agent.turn-context.resolved', [
+        Log::info('agent.turn-context.resolved', [
             'conversation_id' => $conversation->id,
             'current_phase' => $resolvedPhase,
             'recent_phases' => $recent->pluck('phase', 'external_id')->toArray(),

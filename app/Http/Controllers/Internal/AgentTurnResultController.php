@@ -13,6 +13,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Uid\Ulid;
 
 /**
@@ -45,7 +46,7 @@ class AgentTurnResultController
 
         $conversation = Conversation::query()->findOrFail($conversationId);
 
-        \Illuminate\Support\Facades\Log::info('agent.turn-result.posted', [
+        Log::info('agent.turn-result.posted', [
             'conversation_id' => $conversationId,
             'next_phase' => $data['next_phase'],
             'reply_text_snippet' => substr($data['reply_text'] ?? '', 0, 80),
