@@ -34,9 +34,6 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2 no-underline">
           <span className="text-lg font-bold tracking-tight text-(--color-ink)">Foyer</span>
-          <span className="rounded-full bg-(--color-warm-soft) px-2 py-0.5 text-xs font-medium text-(--color-warm-deep) align-middle">
-            portfolio demo
-          </span>
         </Link>
         <nav className="hidden md:flex items-center gap-7 text-sm text-(--color-ink-dim)">
           {NAV_LINKS.map((link) => (
