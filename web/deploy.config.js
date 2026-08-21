@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 module.exports = {
   server: {
-    host: '35.80.110.71',
+    host: '44.245.176.5',
     username: 'ubuntu',
-    privateKeyPath: require('os').homedir() + '/.ssh/ps4_new',
+    privateKeyPath: require('os').homedir() + '/.ssh/scopeforged_rebuild',
   },
   paths: {
     basePath: '/var/www/foyer-web',
